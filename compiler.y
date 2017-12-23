@@ -52,6 +52,7 @@ void registerToMem();
 void add(Identifier a, Identifier b);
 void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex);
 void sub(Identifier a, Identifier b);
+void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex);
 void addInt(long long int command, long long int val);
 string decToBin(long long int dec);
 long long int getArgumentMem(int n);
@@ -388,7 +389,18 @@ expression:
     } SUB value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
-        sub(a, b);
+        if(a.type != "ARR" && b.type != "ARR")
+            sub(a, b);
+        else {
+            Identifier aI, bI;
+            if(identifierStack.count(argumentsTabIndex[0]) > 0)
+                aI = identifierStack.at(argumentsTabIndex[0]);
+            if(identifierStack.count(argumentsTabIndex[1]) > 0)
+                bI = identifierStack.at(argumentsTabIndex[1]);
+            subTab(a, b, aI, bI);
+            argumentsTabIndex[0] = "-1";
+            argumentsTabIndex[1] = "-1";
+        }
         expressionArguments[0] = "-1";
         expressionArguments[1] = "-1";
         numFlag = 0;
@@ -931,6 +943,112 @@ void sub(Identifier a, Identifier b) {
     else if(a.type == "IDE" && b.type == "IDE") {
         memToRegister(a.mem);
         pushCommandOneArg("SUB", b.mem);
+    }
+}
+
+void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex) {
+    if(a.type == "NUM" && b.type == "ARR") {
+        if(bIndex.type == "NUM") {
+            long long int addr = b.mem + stoll(bIndex.name) + 1;
+            setRegister(a.name);
+            pushCommandOneArg("SUB", addr);
+            removeIdentifier(a.name);
+            removeIdentifier(bIndex.name);
+        }
+        else if(bIndex.type == "IDE") {
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(1);
+            setRegister(a.name);
+            pushCommandOneArg("SUBI", 1);
+            removeIdentifier(a.name);
+        }
+    }
+    else if(a.type == "ARR" && b.type == "NUM") {
+        if(aIndex.type == "NUM") {
+            long long int addr = a.mem + stoll(aIndex.name) + 1;
+            setRegister(b.name);
+            registerToMem(3);
+            memToRegister(addr);
+            pushCommandOneArg("SUB", 3);
+            removeIdentifier(b.name);
+            removeIdentifier(aIndex.name);
+        }
+        else if(aIndex.type == "IDE") {
+            setRegister(b.name);
+            registerToMem(3);
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            pushCommandOneArg("LOADI", 1);
+            pushCommandOneArg("SUB", 3);
+            removeIdentifier(b.name);
+        }
+    }
+    else if(a.type == "IDE" && b.type == "ARR") {
+        if(bIndex.type == "NUM") {
+            long long int addr = b.mem + stoll(bIndex.name) + 1;
+            memToRegister(a.mem);
+            pushCommandOneArg("SUB", addr);
+            removeIdentifier(bIndex.name);
+        }
+        else if(bIndex.type == "IDE") {
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(1);
+            memToRegister(a.mem);
+            pushCommandOneArg("SUBI", 1);
+        }
+    }
+    else if(a.type == "ARR" && b.type == "IDE") {
+        if(aIndex.type == "NUM") {
+            long long int addr = a.mem + stoll(aIndex.name) + 1;
+            memToRegister(addr);
+            pushCommandOneArg("SUB", b.mem);
+            removeIdentifier(aIndex.name);
+        }
+        else if(aIndex.type == "IDE") {
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            pushCommandOneArg("LOADI", 1);
+            pushCommandOneArg("SUB", b.mem);
+        }
+    }
+    else if(a.type == "ARR" && b.type == "ARR") {
+        if(aIndex.type == "NUM" && bIndex.type == "NUM") {
+            long long int addrA = a.mem + stoll(aIndex.name) + 1;
+            long long int addrB = b.mem + stoll(bIndex.name) + 1;
+            memToRegister(addrA);
+            pushCommandOneArg("SUB", addrB);
+        }
+        else if(aIndex.type == "NUM" && bIndex.type == "IDE") {
+            long long int addrA = a.mem + stoll(aIndex.name) + 1;
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(1);
+            memToRegister(addrA);
+            pushCommandOneArg("SUBI", 1);
+        }
+        else if(aIndex.type == "IDE" && bIndex.type == "NUM") {
+            //TODO change
+            long long int addrB = b.mem + stoll(bIndex.name) + 1;
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            pushCommandOneArg("LOADI", 1);
+            pushCommandOneArg("SUB", addrB);
+        }
+        else if(aIndex.type == "IDE" && bIndex.type == "IDE") {
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(0);
+            pushCommandOneArg("LOADI", 1);
+            pushCommandOneArg("SUBI", 0);
+        }
     }
 }
 
