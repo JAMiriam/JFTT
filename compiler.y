@@ -217,9 +217,24 @@ command:
     } SEM {
         pushCommand("GET");
         /*registerValue = -1;*/
-        if(assignTarget.local == 0) {
-            long long int assignTemp = assignTarget.mem;
-            registerToMem(assignTemp);
+        if(assignTarget.type == "ARR") {
+            Identifier index = identifierStack.at(tabAssignTargetIndex);
+            if(index.type == "NUM") {
+                long long int tabElMem = assignTarget.mem + stoll(index.name) + 1;
+                registerToMem(tabElMem);
+                removeIdentifier(index.name);
+            }
+            else {
+                registerToMem(0);
+                memToRegister(assignTarget.mem);
+                pushCommandOneArg("ADD", index.mem);
+                registerToMem(2);
+                memToRegister(0);
+                pushCommandOneArg("STOREI", 2);
+            }
+        }
+        else if(assignTarget.local == 0) {
+            registerToMem(assignTarget.mem);
         }
         else {
             cout << "Błąd [okolice linii " << yylineno << \
@@ -234,20 +249,35 @@ command:
         assignFlag = 0;
         writeFlag = 1;
     } value SEM {
+        Identifier ide = identifierStack.at(expressionArguments[0]);
 
-        if(numFlag) {
-            setRegister(identifierStack.at(expressionArguments[0]).name);
-            removeIdentifier(identifierStack.at(expressionArguments[0]).name);
+        if(ide.type == "NUM") {
+            setRegister(ide.name);
+            removeIdentifier(ide.name);
         }
-        else{
-            long long int mem = getArgumentMem(0);
-            memToRegister(mem);
+        else if (ide.type == "IDE"){
+            memToRegister(ide.mem);
+        }
+        else {
+            Identifier index = identifierStack.at(argumentsTabIndex[0]);
+            if(index.type == "NUM") {
+                long long int tabElMem = ide.mem + stoll(index.name) + 1;
+                memToRegister(tabElMem);
+                removeIdentifier(index.name);
+            }
+            else {
+                memToRegister(ide.mem);
+                pushCommandOneArg("ADD", index.mem);
+                pushCommandOneArg("STORE", 0);
+                pushCommandOneArg("LOADI", 0);
+            }
         }
         pushCommand("PUT");
         assignFlag = 1;
         numFlag = 0;
         writeFlag = 0;
         expressionArguments[0] = "-1";
+        argumentsTabIndex[0] = "-1";
     }
 ;
 
@@ -330,7 +360,6 @@ expression:
             expressionArguments[0] = "-1";
             argumentsTabIndex[0] = "-1";
         }
-
     }
 |   value {
         numFlag = 0;
