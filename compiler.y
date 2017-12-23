@@ -1,5 +1,4 @@
 %{
-#define MAX_STACK 5000
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,7 +17,7 @@ typedef struct {
 	string name;
 	long long int mem;
 	long long int local;
-  	long long int array;
+  	long long int tableSize;
   	long long int shift;
   	int initialized;
     string type; //NUM, IDE, ARR
@@ -32,6 +31,7 @@ typedef struct {
 map<string, Identifier> identifierStack;
 vector<string> codeStack;
 vector<Jump> jumpStack;
+vector<long long int> initializedMem;
 
 int yylex();
 extern int yylineno;
@@ -63,7 +63,9 @@ int assignFlag;
 int arrayFlag;
 int writeFlag;
 Identifier assignTarget;
+string tabAssignTargetIndex = "-1";
 string expressionArguments[2] = {"-1", "-1"};
+string argumentsTabIndex[2] = {"-1", "-1"};
 
 %}
 
@@ -119,7 +121,10 @@ vdeclarations:
             Identifier s;
             createIdentifier(&s, $2, 0, size, "ARR");
             insertIdentifier($2, s);
-            memCounter += size - 1;
+            memCounter += size; //- 1;
+            s.shift = 1;
+            setRegister(to_string(s.mem+1));
+            registerToMem(s.mem);
         }
     }
 |
@@ -139,16 +144,35 @@ command:
             << assignTarget.name << "!" << endl;
       		exit(1);
         }*/
-        if(assignTarget.local == 0){
-            long long int assignTemp = assignTarget.mem;
-            registerToMem(assignTemp);
+        if(assignTarget.type == "ARR") {
+            Identifier index = identifierStack.at(tabAssignTargetIndex);
+            if(index.type == "NUM") {
+                long long int tabElMem = assignTarget.mem + stoll(index.name) + 1;
+                registerToMem(tabElMem);
+                removeIdentifier(index.name);
+            }
+            else {
+                registerToMem(0);
+                memToRegister(assignTarget.mem);
+                pushCommandOneArg("ADD", index.mem);
+                registerToMem(2);
+                memToRegister(0);
+                pushCommandOneArg("STOREI", 2);
+            }
         }
-      	else{
+        else if(assignTarget.local == 0) {
+            registerToMem(assignTarget.mem);
+        }
+      	else {
             cout << "Błąd [okolice linii " << yylineno << \
             "]: Próba modyfikacji iteratora pętli." << endl;
       		exit(1);
       	}
         identifierStack.at(assignTarget.name).initialized = 1;
+        /*if(initializedMem.empty() ||
+            find(initializedMem.begin(), initializedMem.end(), assignTarget.name) == initializedMem.end())) {
+            initializedMem.push_back(assignTarget.mem);
+        }*/
       	assignFlag = 1;
     }
 |   IF {assignFlag = 0;
@@ -156,6 +180,7 @@ command:
     } condition {
         assignFlag = 1;
     } THEN commands ifbody
+
 |   WHILE {
         assignFlag = 0;
         depth++;
@@ -274,16 +299,37 @@ forbody:
 
 expression:
     value {
-        long long int mem = getArgumentMem(0);
-        if(numFlag){
-            setRegister(identifierStack.at(expressionArguments[0]).name);
-            removeIdentifier(identifierStack.at(expressionArguments[0]).name);
+        Identifier ide = identifierStack.at(expressionArguments[0]);
+        /*long long int mem = getArgumentMem(0);*/
+        if(ide.type == "NUM") {
+        /*if(numFlag){*/
+            /*setRegister(identifierStack.at(expressionArguments[0]).name);*/
+            /*removeIdentifier(identifierStack.at(expressionArguments[0]).name);*/
+            setRegister(ide.name);
+            removeIdentifier(ide.name);
         }
-        else
-            memToRegister(mem);
+        else if(ide.type == "IDE") {
+            memToRegister(ide.mem);
+        }
+        else {
+            Identifier index = identifierStack.at(argumentsTabIndex[0]);
+            if(index.type == "NUM") {
+                long long int tabElMem = ide.mem + stoll(index.name) + 1;
+                memToRegister(tabElMem);
+                removeIdentifier(index.name);
+            }
+            else {
+                memToRegister(ide.mem);
+                pushCommandOneArg("ADD", index.mem);
+                pushCommandOneArg("STORE", 0);
+                pushCommandOneArg("LOADI", 0);
+            }
+        }
         numFlag = 0;
-      	if (!writeFlag)
+      	if (!writeFlag) {
             expressionArguments[0] = "-1";
+            argumentsTabIndex[0] = "-1";
+        }
 
     }
 |   value {
@@ -564,11 +610,11 @@ identifier:
             "]: Zmienna " << $1 << " nie została zadeklarowana." << endl;
             exit(1);
         }
-        if(identifierStack.at($1).array == 0) {
+        if(identifierStack.at($1).tableSize == 0) {
             if(!assignFlag){
                 if(identifierStack.at($1).initialized == 0) {
                     cout << "Błąd [okolice linii " << yylineno << \
-                    "]: Próba uzycia niezainicjalizowanej zmiennej " << $1 << "." << endl;
+                    "]: Próba użycia niezainicjalizowanej zmiennej " << $1 << "." << endl;
                     exit(1);
                 }
                 if (expressionArguments[0] == "-1"){
@@ -589,8 +635,85 @@ identifier:
           exit(1);
         }
     }
-|   IDE LB IDE RB {}
-|   IDE LB NUM RB {}
+|   IDE LB IDE RB {
+        if(identifierStack.find($1) == identifierStack.end()) {
+            cout << "Błąd [okolice linii " << yylineno << \
+            "]: Zmienna " << $1 << " nie została zadeklarowana." << endl;
+            exit(1);
+        }
+        if(identifierStack.find($3) == identifierStack.end()) {
+            cout << "Błąd [okolice linii " << yylineno << \
+            "]: Zmienna " << $1 << " nie została zadeklarowana." << endl;
+            exit(1);
+        }
+
+        if(identifierStack.at($1).tableSize == 0) {
+            cout << "Błąd [okolice linii " << yylineno << \
+            "]: Zmienna " << $1 << " nie jest tablicą." << endl;
+            exit(1);
+        }
+        else {
+            if(identifierStack.at($3).initialized == 0) {
+                cout << "Błąd [okolice linii " << yylineno << \
+                "]: Próba użycia niezainicjalizowanej zmiennej " << $3 << "." << endl;
+                exit(1);
+            }
+
+            if(!assignFlag){
+                //TODO czy wywalać błąd niezainicjalizowanej
+                //zmiennej dla elementu tablicy
+                if (expressionArguments[0] == "-1"){
+                    expressionArguments[0] = $1;
+                    argumentsTabIndex[0] = $3;
+                }
+                else{
+                    expressionArguments[1] = $1;
+                    argumentsTabIndex[0] = $3;
+                }
+
+            }
+            else {
+                assignTarget = identifierStack.at($1);
+                tabAssignTargetIndex = $3;
+            }
+        }
+    }
+|   IDE LB NUM RB {
+        if(identifierStack.find($1) == identifierStack.end()) {
+            cout << "Błąd [okolice linii " << yylineno << \
+            "]: Zmienna " << $1 << " nie została zadeklarowana." << endl;
+            exit(1);
+        }
+
+        if(identifierStack.at($1).tableSize == 0) {
+            cout << "Błąd [okolice linii " << yylineno << \
+            "]: Zmienna " << $1 << " nie jest tablicą." << endl;
+            exit(1);
+        }
+        else {
+            Identifier s;
+            createIdentifier(&s, $3, 0, 0, "NUM");
+            insertIdentifier($3, s);
+
+            if(!assignFlag){
+                //TODO czy wywalać błąd niezainicjalizowanej
+                //zmiennej dla elementu tablicy
+                if (expressionArguments[0] == "-1"){
+                    expressionArguments[0] = $1;
+                    argumentsTabIndex[0] = $3;
+                }
+                else{
+                    expressionArguments[1] = $1;
+                    argumentsTabIndex[0] = $3;
+                }
+
+            }
+            else {
+                assignTarget = identifierStack.at($1);
+                tabAssignTargetIndex = $3;
+            }
+        }
+    }
 ;
 
 %%
@@ -600,7 +723,6 @@ void createIdentifier(Identifier *s, string name, long long int isLocal,
     s->shift = 0;
     s->name = name;
     s->mem = memCounter;
-    memCounter++;
     s->type = type;
     s->initialized = 0;
     if(isLocal){
@@ -610,10 +732,10 @@ void createIdentifier(Identifier *s, string name, long long int isLocal,
     	s->local = 0;
     }
     if(isArray){
-      s->array = isArray;
+      s->tableSize = isArray;
     }
     else{
-      s->array = 0;
+      s->tableSize = 0;
     }
 }
 
@@ -718,6 +840,7 @@ void registerToMem(long long int mem) {
 
 void insertIdentifier(string key, Identifier i) {
     identifierStack.insert(make_pair(key, i));
+    memCounter++;
 }
 
 void removeIdentifier(string key) {
