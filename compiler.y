@@ -50,6 +50,7 @@ void zeroRegister();
 void memToRegister(long long int mem);
 void registerToMem();
 void add(Identifier a, Identifier b);
+void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex);
 void sub(Identifier a, Identifier b);
 void addInt(long long int command, long long int val);
 string decToBin(long long int dec);
@@ -111,12 +112,12 @@ vdeclarations:
             << "]: Kolejna deklaracja zmiennej " << $<str>2 << "." << endl;
             exit(1);
         }
-        else if (atoll($4) <= 0){
+        else if (atoll($4) <= 0) {
             cout << "Błąd [okolice linii " << yylineno \
             << "]: Deklarowanie tablicy " << $<str>2 << " o rozmiarze zero." << endl;
             exit(1);
         }
-        else{
+        else {
             long long int size = atoll($4);
             Identifier s;
             createIdentifier(&s, $2, 0, size, "ARR");
@@ -255,7 +256,7 @@ command:
             setRegister(ide.name);
             removeIdentifier(ide.name);
         }
-        else if (ide.type == "IDE"){
+        else if (ide.type == "IDE") {
             memToRegister(ide.mem);
         }
         else {
@@ -366,7 +367,18 @@ expression:
     } ADD value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
-        add(a, b);
+        if(a.type != "ARR" && b.type != "ARR")
+            add(a, b);
+        else {
+            Identifier aI, bI;
+            if(identifierStack.count(argumentsTabIndex[0]) > 0)
+                aI = identifierStack.at(argumentsTabIndex[0]);
+            if(identifierStack.count(argumentsTabIndex[1]) > 0)
+                bI = identifierStack.at(argumentsTabIndex[1]);
+            addTab(a, b, aI, bI);
+            argumentsTabIndex[0] = "-1";
+            argumentsTabIndex[1] = "-1";
+        }
         expressionArguments[0] = "-1";
         expressionArguments[1] = "-1";
         numFlag = 0;
@@ -697,7 +709,7 @@ identifier:
                 }
                 else{
                     expressionArguments[1] = $1;
-                    argumentsTabIndex[0] = $3;
+                    argumentsTabIndex[1] = $3;
                 }
 
             }
@@ -733,7 +745,7 @@ identifier:
                 }
                 else{
                     expressionArguments[1] = $1;
-                    argumentsTabIndex[0] = $3;
+                    argumentsTabIndex[1] = $3;
                 }
 
             }
@@ -793,6 +805,107 @@ void add(Identifier a, Identifier b) {
     else if(a.type == "IDE" && b.type == "IDE") {
         memToRegister(a.mem);
         pushCommandOneArg("ADD", b.mem);
+    }
+}
+
+void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex) {
+    if(a.type == "NUM" && b.type == "ARR") {
+        if(bIndex.type == "NUM") {
+            long long int addr = b.mem + stoll(bIndex.name) + 1;
+            setRegister(a.name);
+            pushCommandOneArg("ADD", addr);
+            removeIdentifier(a.name);
+            removeIdentifier(bIndex.name);
+        }
+        else if(bIndex.type == "IDE") {
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(1);
+            setRegister(a.name);
+            pushCommandOneArg("ADDI", 1);
+            removeIdentifier(a.name);
+        }
+    }
+    else if(a.type == "ARR" && b.type == "NUM") {
+        if(aIndex.type == "NUM") {
+            long long int addr = a.mem + stoll(aIndex.name) + 1;
+            setRegister(b.name);
+            pushCommandOneArg("ADD", addr);
+            removeIdentifier(b.name);
+            removeIdentifier(aIndex.name);
+        }
+        else if(aIndex.type == "IDE") {
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            setRegister(b.name);
+            pushCommandOneArg("ADDI", 1);
+            removeIdentifier(b.name);
+        }
+    }
+    else if(a.type == "IDE" && b.type == "ARR") {
+        if(bIndex.type == "NUM") {
+            long long int addr = b.mem + stoll(bIndex.name) + 1;
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", addr);
+            removeIdentifier(bIndex.name);
+        }
+        else if(bIndex.type == "IDE") {
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(1);
+            memToRegister(a.mem);
+            pushCommandOneArg("ADDI", 1);
+        }
+    }
+    else if(a.type == "ARR" && b.type == "IDE") {
+        if(aIndex.type == "NUM") {
+            long long int addr = a.mem + stoll(aIndex.name) + 1;
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", addr);
+            removeIdentifier(aIndex.name);
+        }
+        else if(aIndex.type == "IDE") {
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            memToRegister(b.mem);
+            pushCommandOneArg("ADDI", 1);
+        }
+    }
+    else if(a.type == "ARR" && b.type == "ARR") {
+        if(aIndex.type == "NUM" && bIndex.type == "NUM") {
+            long long int addrA = a.mem + stoll(aIndex.name) + 1;
+            long long int addrB = b.mem + stoll(bIndex.name) + 1;
+            memToRegister(addrA);
+            pushCommandOneArg("ADD", addrB);
+        }
+        else if(aIndex.type == "NUM" && bIndex.type == "IDE") {
+            long long int addrA = a.mem + stoll(aIndex.name) + 1;
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(1);
+            memToRegister(addrA);
+            pushCommandOneArg("ADDI", 1);
+        }
+        else if(aIndex.type == "IDE" && bIndex.type == "NUM") {
+            long long int addrB = b.mem + stoll(bIndex.name) + 1;
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            memToRegister(addrB);
+            pushCommandOneArg("ADDI", 1);
+        }
+        else if(aIndex.type == "IDE" && bIndex.type == "IDE") {
+            memToRegister(a.mem);
+            pushCommandOneArg("ADD", aIndex.mem);
+            registerToMem(1);
+            memToRegister(b.mem);
+            pushCommandOneArg("ADD", bIndex.mem);
+            registerToMem(0);
+            pushCommandOneArg("LOADI", 1);
+            pushCommandOneArg("ADDI", 0);
+        }
     }
 }
 
@@ -911,11 +1024,17 @@ void printCode(string outFileName) {
         out_code << codeStack.at(i) << endl;
 }
 
+void printCodeStd() {
+	long long int i;
+	for(i = 0; i < codeStack.size(); i++)
+        cout << codeStack.at(i) << endl;
+}
+
 void parser(long long int argv, char* argc[]) {
-	if(argv < 2) {
+	/*if(argv < 2) {
         cout << "Podaj ścieżkę do pliku wyjściowego." << endl;
-	}
-	else {
+	}*/
+	/*else {*/
 		assignFlag = 1;
 		memCounter = 12;
         /*registerValue = -1;*/
@@ -926,9 +1045,15 @@ void parser(long long int argv, char* argc[]) {
 
 		yyparse();
 
-        string file = argc[1];
-    	printCode(file);
-	}
+        string file = "";
+        if(argv < 2)
+            /*file = "out";*/
+            printCodeStd();
+        else {
+            file = argc[1];
+            printCode(file);
+        }
+	/*}*/
 }
 
 int main(int argv, char* argc[]){
