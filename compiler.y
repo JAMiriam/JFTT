@@ -30,6 +30,7 @@ typedef struct {
 map<string, Identifier> identifierStack;
 vector<string> codeStack;
 vector<Jump> jumpStack;
+vector<Identifier> forStack;
 /*vector<long long int> initializedMem;*/
 
 int yylex();
@@ -97,7 +98,7 @@ vdeclarations:
             << "]: Kolejna deklaracja zmiennej " << $<str>2 << "." << endl;
             exit(1);
         }
-        else{
+        else {
             Identifier s;
             createIdentifier(&s, $2, 0, 0, "IDE");
             insertIdentifier($2, s);
@@ -208,7 +209,22 @@ command:
         depth--;
         assignFlag = 1;
     }
-|   FOR IDE {} FROM value {} TO forbody
+|   FOR IDE {
+        if(identifierStack.find($2)!=identifierStack.end()) {
+            cout << "Błąd [okolice linii " << yylineno \
+            << "]: Kolejna deklaracja zmiennej " << $<str>2 << "." << endl;
+            exit(1);
+        }
+        else {
+            Identifier s;
+            createIdentifier(&s, $2, 1, 0, "IDE");
+            s.initialized = 1;
+            insertIdentifier($2, s);
+        }
+        assignFlag = 0;
+        assignTarget = identifierStack.at($2);
+        depth++;
+    } FROM value forbody
 |   READ identifier {
         assignFlag = 1;
     } SEM {
@@ -318,8 +334,93 @@ ifbody:
 ;
 
 forbody:
-    DOWNTO value {} DO commands ENDFOR {}
-|   TO value {} DO commands ENDFOR {}
+    DOWNTO value {} DO commands ENDFOR { depth--;}
+|   TO value DO {
+        //TODO have to assign iterator and create counter
+        /*Identifier s;
+        string name = "C" + to_string(depth);
+        createIdentifier(&s, name, 1, 0, "IDE");
+        insertIdentifier(name, s);*/
+
+        Identifier a = identifierStack.at(expressionArguments[0]);
+        Identifier b = identifierStack.at(expressionArguments[1]);
+
+        if(a.type == "NUM") {
+            setRegister(a.name);
+            /*removeIdentifier(a.name);*/
+        }
+        else if(a.type == "IDE") {
+            memToRegister(a.mem);
+        }
+        else {
+            Identifier index = identifierStack.at(argumentsTabIndex[0]);
+            if(index.type == "NUM") {
+                long long int tabElMem = a.mem + stoll(index.name) + 1;
+                memToRegister(tabElMem);
+                /*removeIdentifier(index.name);*/
+            }
+            else {
+                memToRegister(a.mem);
+                pushCommandOneArg("ADD", index.mem);
+                pushCommandOneArg("STORE", 0);
+                pushCommandOneArg("LOADI", 0);
+            }
+        }
+        registerToMem(assignTarget.mem);
+
+        if(a.type != "ARR" && b.type != "ARR")
+            sub(b, a, 1);
+        else {
+            Identifier aI, bI;
+            if(identifierStack.count(argumentsTabIndex[0]) > 0)
+                aI = identifierStack.at(argumentsTabIndex[0]);
+            if(identifierStack.count(argumentsTabIndex[1]) > 0)
+                bI = identifierStack.at(argumentsTabIndex[1]);
+            subTab(b, a, bI, aI, 1);
+            argumentsTabIndex[0] = "-1";
+            argumentsTabIndex[1] = "-1";
+        }
+        expressionArguments[0] = "-1";
+        expressionArguments[1] = "-1";
+
+        Identifier s;
+        string name = "C" + to_string(depth);
+        createIdentifier(&s, name, 1, 0, "IDE");
+        insertIdentifier(name, s);
+
+        registerToMem(identifierStack.at(name).mem);
+        forStack.push_back(assignTarget);
+
+        pushCommandOneArg("JZERO", codeStack.size()+2);
+        //TODO jak są zmienne to trzeba warunek końca
+        memToRegister(identifierStack.at(name).mem);
+        Jump j;
+        createJump(&j, codeStack.size(), depth);
+        jumpStack.push_back(j);
+        pushCommand("JZERO");
+        pushCommand("DEC");
+        registerToMem(identifierStack.at(name).mem);
+        assignFlag = 1;
+    } commands ENDFOR {
+        Identifier iterator = forStack.at(forStack.size()-1);
+        //TODO increment iterator and think if everything with it is ok
+        memToRegister(iterator.mem);
+        pushCommand("INC");
+        registerToMem(iterator.mem);
+
+        long long int jumpCount = jumpStack.size()-1;
+        long long int stack = jumpStack.at(jumpCount).placeInStack-1;
+        pushCommandOneArg("JUMP", stack);
+        addInt(jumpStack.at(jumpCount).placeInStack, codeStack.size());
+        jumpStack.pop_back();
+
+        string name = "C" + to_string(depth);
+        removeIdentifier(name);
+        removeIdentifier(iterator.name);
+        forStack.pop_back();
+        depth--;
+        assignFlag = 1;
+    }
 ;
 
 expression:
@@ -444,7 +545,7 @@ condition:
         argumentsTabIndex[0] = "-1";
         argumentsTabIndex[1] = "-1";
     }
-|   value  NE value {
+|   value NE value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
 

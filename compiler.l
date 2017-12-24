@@ -16,7 +16,7 @@
 <CMT><<EOF>>    { printf("Error: unterminated comment\n"); yyterminate(); }
 
 "VAR"           { return VAR;      }
-"BEGIN"         { return BEG;    }
+"BEGIN"         { return BEG;      }
 "END"           { return END;      }
 
 ":="            { return ASG;      }
