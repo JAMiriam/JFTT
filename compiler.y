@@ -18,7 +18,6 @@ typedef struct {
 	long long int mem;
 	long long int local;
   	long long int tableSize;
-  	long long int shift;
   	int initialized;
     string type; //NUM, IDE, ARR
 } Identifier;
@@ -31,7 +30,7 @@ typedef struct {
 map<string, Identifier> identifierStack;
 vector<string> codeStack;
 vector<Jump> jumpStack;
-vector<long long int> initializedMem;
+/*vector<long long int> initializedMem;*/
 
 int yylex();
 extern int yylineno;
@@ -55,14 +54,11 @@ void sub(Identifier a, Identifier b);
 void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex);
 void addInt(long long int command, long long int val);
 string decToBin(long long int dec);
-long long int getArgumentMem(int n);
 
 long long int memCounter;
 /*long long int registerValue;*/
 long long int depth;
-int numFlag;
 int assignFlag;
-int arrayFlag;
 int writeFlag;
 Identifier assignTarget;
 string tabAssignTargetIndex = "-1";
@@ -123,8 +119,7 @@ vdeclarations:
             Identifier s;
             createIdentifier(&s, $2, 0, size, "ARR");
             insertIdentifier($2, s);
-            memCounter += size; //- 1;
-            s.shift = 1;
+            memCounter += size;
             setRegister(to_string(s.mem+1));
             registerToMem(s.mem);
         }
@@ -217,25 +212,25 @@ command:
 |   READ identifier {
         assignFlag = 1;
     } SEM {
-        pushCommand("GET");
         /*registerValue = -1;*/
         if(assignTarget.type == "ARR") {
             Identifier index = identifierStack.at(tabAssignTargetIndex);
             if(index.type == "NUM") {
+                pushCommand("GET");
                 long long int tabElMem = assignTarget.mem + stoll(index.name) + 1;
                 registerToMem(tabElMem);
                 removeIdentifier(index.name);
             }
             else {
-                registerToMem(0);
                 memToRegister(assignTarget.mem);
                 pushCommandOneArg("ADD", index.mem);
                 registerToMem(2);
-                memToRegister(0);
+                pushCommand("GET");
                 pushCommandOneArg("STOREI", 2);
             }
         }
         else if(assignTarget.local == 0) {
+            pushCommand("GET");
             registerToMem(assignTarget.mem);
         }
         else {
@@ -245,7 +240,6 @@ command:
         }
         identifierStack.at(assignTarget.name).initialized = 1;
         assignFlag = 1;
-
     }
 |   WRITE {
         assignFlag = 0;
@@ -276,7 +270,6 @@ command:
         }
         pushCommand("PUT");
         assignFlag = 1;
-        numFlag = 0;
         writeFlag = 0;
         expressionArguments[0] = "-1";
         argumentsTabIndex[0] = "-1";
@@ -332,11 +325,7 @@ forbody:
 expression:
     value {
         Identifier ide = identifierStack.at(expressionArguments[0]);
-        /*long long int mem = getArgumentMem(0);*/
         if(ide.type == "NUM") {
-        /*if(numFlag){*/
-            /*setRegister(identifierStack.at(expressionArguments[0]).name);*/
-            /*removeIdentifier(identifierStack.at(expressionArguments[0]).name);*/
             setRegister(ide.name);
             removeIdentifier(ide.name);
         }
@@ -357,15 +346,12 @@ expression:
                 pushCommandOneArg("LOADI", 0);
             }
         }
-        numFlag = 0;
       	if (!writeFlag) {
             expressionArguments[0] = "-1";
             argumentsTabIndex[0] = "-1";
         }
     }
-|   value {
-        numFlag = 0;
-    } ADD value {
+|   value ADD value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
         if(a.type != "ARR" && b.type != "ARR")
@@ -382,11 +368,8 @@ expression:
         }
         expressionArguments[0] = "-1";
         expressionArguments[1] = "-1";
-        numFlag = 0;
     }
-|   value {
-        numFlag = 0;
-    } SUB value {
+|   value SUB value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
         if(a.type != "ARR" && b.type != "ARR")
@@ -403,7 +386,6 @@ expression:
         }
         expressionArguments[0] = "-1";
         expressionArguments[1] = "-1";
-        numFlag = 0;
     }
 |   value {} MUL value {}
 |   value {} DIV value {}
@@ -411,9 +393,7 @@ expression:
 ;
 
 condition:
-    value {
-        numFlag = 0;
-    } EQ value {
+    value EQ value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
 
@@ -465,11 +445,8 @@ condition:
         expressionArguments[1] = "-1";
         argumentsTabIndex[0] = "-1";
         argumentsTabIndex[1] = "-1";
-        numFlag = 0;
     }
-|   value {
-        numFlag = 0;
-    } NE value {
+|   value  NE value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
 
@@ -523,11 +500,8 @@ condition:
         expressionArguments[1] = "-1";
         argumentsTabIndex[0] = "-1";
         argumentsTabIndex[1] = "-1";
-        numFlag = 0;
     }
-|   value {
-        numFlag = 0;
-    } LT value {
+|   value LT value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
 
@@ -561,11 +535,8 @@ condition:
 
         expressionArguments[0] = "-1";
         expressionArguments[1] = "-1";
-        numFlag = 0;
     }
-|   value {
-        numFlag = 0;
-    } GT value {
+|   value GT value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
 
@@ -599,11 +570,8 @@ condition:
 
         expressionArguments[0] = "-1";
         expressionArguments[1] = "-1";
-        numFlag = 0;
     }
-|   value {
-        numFlag = 0;
-    } LE value {
+|   value LE value {
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
         Identifier aIndex, bIndex;
@@ -763,11 +731,8 @@ condition:
         expressionArguments[1] = "-1";
         argumentsTabIndex[0] = "-1";
         argumentsTabIndex[1] = "-1";
-        numFlag = 0;
     }
-|   value {
-        numFlag = 0;
-    } GE value {
+|   value GE value {
         Identifier b = identifierStack.at(expressionArguments[0]);
         Identifier a = identifierStack.at(expressionArguments[1]);
         Identifier aIndex, bIndex;
@@ -927,7 +892,6 @@ condition:
         expressionArguments[1] = "-1";
         argumentsTabIndex[0] = "-1";
         argumentsTabIndex[1] = "-1";
-        numFlag = 0;
     }
 ;
 
@@ -941,7 +905,6 @@ value:
         Identifier s;
       	createIdentifier(&s, $1, 0, 0, "NUM");
         insertIdentifier($1, s);
-      	numFlag = 1;
       	if (expressionArguments[0] == "-1"){
       		expressionArguments[0] = $1;
       	}
@@ -1069,7 +1032,6 @@ identifier:
 
 void createIdentifier(Identifier *s, string name, long long int isLocal,
     long long int isArray, string type){
-    s->shift = 0;
     s->name = name;
     s->mem = memCounter;
     s->type = type;
@@ -1327,7 +1289,6 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex) {
             pushCommandOneArg("SUBI", 1);
         }
         else if(aIndex.type == "IDE" && bIndex.type == "NUM") {
-            //TODO change
             long long int addrB = b.mem + stoll(bIndex.name) + 1;
             memToRegister(a.mem);
             pushCommandOneArg("ADD", aIndex.mem);
@@ -1404,24 +1365,6 @@ void removeIdentifier(string key) {
     memCounter--;
 }
 
-long long int getArgumentMem(int n) {
-    if(n == 0) {
-        string key = expressionArguments[0];
-        if(key != "-1") {
-            return identifierStack.at(key).mem + identifierStack.at(key).shift;
-        }
-		return 10;
-	}
-	else if(n == 1) {
-        string key = expressionArguments[1];
-		if(key != "-1") {
-            return identifierStack.at(key).mem + identifierStack.at(key).shift;
-		}
-		return 11;
-    }
-	return 0;
-}
-
 void pushCommand(string str) {
     codeStack.push_back(str);
 }
@@ -1445,29 +1388,22 @@ void printCodeStd() {
 }
 
 void parser(long long int argv, char* argc[]) {
-	/*if(argv < 2) {
-        cout << "Podaj ścieżkę do pliku wyjściowego." << endl;
-	}*/
-	/*else {*/
-		assignFlag = 1;
-		memCounter = 12;
-        /*registerValue = -1;*/
-		numFlag = 0;
-		writeFlag = 0;
-		arrayFlag = 0;
-        depth = 0;
+	assignFlag = 1;
+	memCounter = 12;
+    /*registerValue = -1;*/
+	writeFlag = 0;
+    depth = 0;
 
-		yyparse();
+	yyparse();
 
-        string file = "";
-        if(argv < 2)
-            /*file = "out";*/
-            printCodeStd();
-        else {
-            file = argc[1];
-            printCode(file);
-        }
-	/*}*/
+    string file = "";
+    if(argv < 2)
+        /*file = "out";*/
+        printCodeStd();
+    else {
+        file = argc[1];
+        printCode(file);
+    }
 }
 
 int main(int argv, char* argc[]){
