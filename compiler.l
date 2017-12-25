@@ -13,7 +13,7 @@
 "("             { BEGIN(CMT);       }
 <CMT>")"        { BEGIN(INITIAL);   }
 <CMT>(\n|.)
-<CMT><<EOF>>    { printf("Error: unterminated comment\n"); yyterminate(); }
+<CMT><<EOF>>    { printf("Błąd: niezakończony komentarz.\n"); yyterminate(); }
 
 "VAR"           { return VAR;      }
 "BEGIN"         { return BEG;      }
