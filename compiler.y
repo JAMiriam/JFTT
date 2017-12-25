@@ -629,8 +629,143 @@ expression:
         expressionArguments[0] = "-1";
         expressionArguments[1] = "-1";
     }
-|   value {} DIV value {}
-|   value {} MOD value {}
+|   value DIV value {
+        Identifier a = identifierStack.at(expressionArguments[0]);
+        Identifier b = identifierStack.at(expressionArguments[1]);
+        Identifier aI, bI;
+        if(identifierStack.count(argumentsTabIndex[0]) > 0)
+            aI = identifierStack.at(argumentsTabIndex[0]);
+        if(identifierStack.count(argumentsTabIndex[1]) > 0)
+            bI = identifierStack.at(argumentsTabIndex[1]);
+
+        if(a.type == "NUM" && b.type == "NUM") {
+            long long int val = stoll(a.name) / stoll(b.name);
+            setRegister(to_string(val));
+            removeIdentifier(a.name);
+            removeIdentifier(b.name);
+        }
+        else {
+            setRegister("0");
+            registerToMem(5);
+            registerToMem(8);
+            setToTempMem(b, bI, 7);
+            setToTempMem(a, aI, 6);
+
+            pushCommand("INC");
+            pushCommandOneArg("SUB", 7);
+            pushCommandOneArg("JZERO", codeStack.size()+38); //eeeeend
+            pushCommandOneArg("JUMP", codeStack.size()+4);
+
+            long long int jumpVal = codeStack.size();
+            pushCommand("INC");
+            pushCommandOneArg("SUB", 7);
+            pushCommandOneArg("JZERO", codeStack.size()+9);
+            memToRegister(5);
+            pushCommand("INC");
+            registerToMem(5);
+            memToRegister(7);
+            pushCommand("SHL");
+            registerToMem(7);
+            memToRegister(6);
+            pushCommandOneArg("JUMP", jumpVal);
+            memToRegister(7);
+            pushCommand("SHR");
+            registerToMem(7);
+            jumpVal = codeStack.size();
+            memToRegister(5); //here is i
+            pushCommandOneArg("JZERO", codeStack.size()+21); //to the end
+            pushCommand("DEC");
+            registerToMem(5);
+            memToRegister(6);
+            pushCommand("INC");
+            pushCommandOneArg("SUB", 7);
+            pushCommandOneArg("JZERO", codeStack.size()+8); //to else
+            pushCommand("DEC"); //need to think of value
+            registerToMem(6);
+            memToRegister(8);
+            pushCommand("SHL");
+            pushCommand("INC");
+            registerToMem(8);
+            pushCommandOneArg("JUMP", codeStack.size()+4); //to end of else
+            memToRegister(8);   //here starts else
+            pushCommand("SHL");
+            registerToMem(8);
+            memToRegister(7); //end of else
+            pushCommand("SHR");
+            registerToMem(7);
+            pushCommandOneArg("JUMP", jumpVal); //to the i
+            memToRegister(8); //end
+        }
+
+        argumentsTabIndex[0] = "-1";
+        argumentsTabIndex[1] = "-1";
+        expressionArguments[0] = "-1";
+        expressionArguments[1] = "-1";
+    }
+|   value MOD value {
+        Identifier a = identifierStack.at(expressionArguments[0]);
+        Identifier b = identifierStack.at(expressionArguments[1]);
+        Identifier aI, bI;
+        if(identifierStack.count(argumentsTabIndex[0]) > 0)
+            aI = identifierStack.at(argumentsTabIndex[0]);
+        if(identifierStack.count(argumentsTabIndex[1]) > 0)
+            bI = identifierStack.at(argumentsTabIndex[1]);
+
+        if(a.type == "NUM" && b.type == "NUM") {
+            long long int val = stoll(a.name) % stoll(b.name);
+            setRegister(to_string(val));
+            removeIdentifier(a.name);
+            removeIdentifier(b.name);
+        }
+        else {
+            setRegister("0");
+            registerToMem(5);
+            setToTempMem(b, bI, 7);
+            setToTempMem(a, aI, 6);
+
+            pushCommand("INC");
+            pushCommandOneArg("SUB", 7);
+            pushCommandOneArg("JZERO", codeStack.size()+30); //eeeeend
+            pushCommandOneArg("JUMP", codeStack.size()+4);
+
+            long long int jumpVal = codeStack.size();
+            pushCommand("INC");
+            pushCommandOneArg("SUB", 7);
+            pushCommandOneArg("JZERO", codeStack.size()+9);
+            memToRegister(5);
+            pushCommand("INC");
+            registerToMem(5);
+            memToRegister(7);
+            pushCommand("SHL");
+            registerToMem(7);
+            memToRegister(6);
+            pushCommandOneArg("JUMP", jumpVal);
+            memToRegister(7);
+            pushCommand("SHR");
+            registerToMem(7);
+            jumpVal = codeStack.size();
+            memToRegister(5); //here is i
+            pushCommandOneArg("JZERO", codeStack.size()+13); //to the end
+            pushCommand("DEC");
+            registerToMem(5);
+            memToRegister(6);
+            pushCommand("INC");
+            pushCommandOneArg("SUB", 7);
+            pushCommandOneArg("JZERO", codeStack.size()+3); //to end of if
+            pushCommand("DEC"); //need to think of value
+            registerToMem(6);
+            memToRegister(7); //end of if
+            pushCommand("SHR");
+            registerToMem(7);
+            pushCommandOneArg("JUMP", jumpVal); //to the i
+            memToRegister(6); //end
+        }
+
+        argumentsTabIndex[0] = "-1";
+        argumentsTabIndex[1] = "-1";
+        expressionArguments[0] = "-1";
+        expressionArguments[1] = "-1";
+    }
 ;
 
 condition:
