@@ -15,11 +15,12 @@ using namespace std;
 
 typedef struct {
 	string name;
+    string type; //NUM, IDE, ARR
+    int initialized;
+    int counter;
 	long long int mem;
 	long long int local;
   	long long int tableSize;
-  	int initialized;
-    string type; //NUM, IDE, ARR
 } Identifier;
 
 typedef struct {
@@ -1567,14 +1568,23 @@ void registerToMem(long long int mem) {
 void insertIdentifier(string key, Identifier i) {
     if(identifierStack.count(key) == 0) {
         identifierStack.insert(make_pair(key, i));
+        identifierStack.at(key).counter = 0;
         memCounter++;
+    }
+    else {
+        identifierStack.at(key).counter = identifierStack.at(key).counter+1;
     }
 }
 
 void removeIdentifier(string key) {
     if(identifierStack.count(key) > 0) {
-        identifierStack.erase(key);
-        memCounter--;
+        if(identifierStack.at(key).counter > 0) {
+            identifierStack.at(key).counter = identifierStack.at(key).counter-1;
+        }
+        else {
+            identifierStack.erase(key);
+            memCounter--;
+        }
     }
 }
 
