@@ -54,7 +54,7 @@ void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex);
 void sub(Identifier a, Identifier b, int isINC);
 void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, int isINC);
 void addInt(long long int command, long long int val);
-void setToTempMem(Identifier a, Identifier aI, long long int tempMem);
+long long int setToTempMem(Identifier a, Identifier aI, long long int tempMem, int isJZERO);
 string decToBin(long long int dec);
 
 long long int memCounter;
@@ -594,15 +594,15 @@ expression:
             long long int stackJ = codeStack.size();
             pushCommand("JZERO");
 
-            setToTempMem(b, bI, 6);
-            setToTempMem(a, aI, 5);
+            setToTempMem(b, bI, 6, 0);
+            setToTempMem(a, aI, 5, 0);
 
             pushCommand("JUMP");
             addInt(stackJ, codeStack.size());
             stackJ = codeStack.size()-1;
 
-            setToTempMem(a, aI, 6);
-            setToTempMem(b, bI, 5);
+            setToTempMem(a, aI, 6, 0);
+            setToTempMem(b, bI, 5, 0);
 
             addInt(stackJ, codeStack.size());
 
@@ -638,7 +638,13 @@ expression:
         if(identifierStack.count(argumentsTabIndex[1]) > 0)
             bI = identifierStack.at(argumentsTabIndex[1]);
 
-        if(a.type == "NUM" && b.type == "NUM") {
+        if(b.type == "NUM" && stoll(b.name) == 0) {
+            setRegister("0");
+        }
+        else if(a.type == "NUM" && stoll(a.name) == 0) {
+            setRegister("0");
+        }
+        else if(a.type == "NUM" && b.type == "NUM") {
             long long int val = stoll(a.name) / stoll(b.name);
             setRegister(to_string(val));
             removeIdentifier(a.name);
@@ -648,8 +654,8 @@ expression:
             setRegister("0");
             registerToMem(5);
             registerToMem(8);
-            setToTempMem(b, bI, 7);
-            setToTempMem(a, aI, 6);
+            long long int zeroJump = setToTempMem(b, bI, 7, 1);
+            long long int zeroJump2 = setToTempMem(a, aI, 6, 1);
 
             pushCommand("INC");
             pushCommandOneArg("SUB", 7);
@@ -695,6 +701,10 @@ expression:
             registerToMem(7);
             pushCommandOneArg("JUMP", jumpVal); //to the i
             memToRegister(8); //end
+            pushCommandOneArg("JUMP", codeStack.size()+2);
+            addInt(zeroJump, codeStack.size());
+            addInt(zeroJump2, codeStack.size());
+            setRegister("0");
         }
 
         argumentsTabIndex[0] = "-1";
@@ -711,7 +721,13 @@ expression:
         if(identifierStack.count(argumentsTabIndex[1]) > 0)
             bI = identifierStack.at(argumentsTabIndex[1]);
 
-        if(a.type == "NUM" && b.type == "NUM") {
+        if(b.type == "NUM" && stoll(b.name) == 0) {
+            setRegister("0");
+        }
+        else if(a.type == "NUM" && stoll(a.name) == 0) {
+            setRegister("0");
+        }
+        else if(a.type == "NUM" && b.type == "NUM") {
             long long int val = stoll(a.name) % stoll(b.name);
             setRegister(to_string(val));
             removeIdentifier(a.name);
@@ -720,8 +736,8 @@ expression:
         else {
             setRegister("0");
             registerToMem(5);
-            setToTempMem(b, bI, 7);
-            setToTempMem(a, aI, 6);
+            long long int zeroJump = setToTempMem(b, bI, 7, 1);
+            long long int zeroJump2 = setToTempMem(a, aI, 6, 1);
 
             pushCommand("INC");
             pushCommandOneArg("SUB", 7);
@@ -759,6 +775,10 @@ expression:
             registerToMem(7);
             pushCommandOneArg("JUMP", jumpVal); //to the i
             memToRegister(6); //end
+            pushCommandOneArg("JUMP", codeStack.size()+2);
+            addInt(zeroJump, codeStack.size());
+            addInt(zeroJump2, codeStack.size());
+            setRegister("0");
         }
 
         argumentsTabIndex[0] = "-1";
@@ -1177,22 +1197,32 @@ void createJump(Jump *j, long long int stack, long long int depth) {
     j->depth = depth;
 }
 
-void setToTempMem(Identifier a, Identifier aI, long long int tempMem) {
+long long int setToTempMem(Identifier a, Identifier aI, long long int tempMem, int isJZERO) {
+    long long int mem = 0;
     if(a.type == "NUM") {
         setRegister(a.name);
-        //JZERO END
+        if(isJZERO) {
+            mem = codeStack.size();
+            pushCommand("JZERO");
+        }
         registerToMem(tempMem);
         removeIdentifier(a.name);
     }
     else if(a.type == "IDE") {
         memToRegister(a.mem);
-        //JZERO END
+        if(isJZERO) {
+            mem = codeStack.size();
+            pushCommand("JZERO"); //JZERO END
+        }
         registerToMem(tempMem);
     }
     else if(a.type == "ARR" && aI.type == "NUM") {
         long long int addr = a.mem + stoll(aI.name) + 1;
         memToRegister(addr);
-        //JZERO END
+        if(isJZERO) {
+            mem = codeStack.size();
+            pushCommand("JZERO"); //JZERO END
+        }
         registerToMem(tempMem);
         removeIdentifier(aI.name);
     }
@@ -1201,9 +1231,13 @@ void setToTempMem(Identifier a, Identifier aI, long long int tempMem) {
         pushCommandOneArg("ADD", aI.mem);
         registerToMem(tempMem);
         pushCommandOneArg("LOADI", tempMem);
-        //JZERO END
+        if(isJZERO) {
+            mem = codeStack.size();
+            pushCommand("JZERO"); //JZERO END
+        }
         registerToMem(tempMem);
     }
+    return mem;
 }
 
 void add(Identifier a, Identifier b) {
