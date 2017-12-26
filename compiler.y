@@ -52,8 +52,8 @@ void memToRegister(long long int mem);
 void registerToMem();
 void add(Identifier a, Identifier b);
 void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex);
-void sub(Identifier a, Identifier b, int isINC);
-void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, int isINC);
+void sub(Identifier a, Identifier b, int isINC, int isRemoval);
+void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, int isINC, int isRemoval);
 void addInt(long long int command, long long int val);
 long long int setToTempMem(Identifier a, Identifier aI, long long int tempMem, int isJZERO);
 string decToBin(long long int dec);
@@ -364,14 +364,14 @@ forbody:
         identifierStack.at(assignTarget.name).initialized = 1;
 
         if(a.type != "ARR" && b.type != "ARR")
-            sub(a, b, 1);
+            sub(a, b, 1, 1);
         else {
             Identifier aI, bI;
             if(identifierStack.count(argumentsTabIndex[0]) > 0)
                 aI = identifierStack.at(argumentsTabIndex[0]);
             if(identifierStack.count(argumentsTabIndex[1]) > 0)
                 bI = identifierStack.at(argumentsTabIndex[1]);
-            subTab(a, b, aI, bI, 1);
+            subTab(a, b, aI, bI, 1, 1);
             argumentsTabIndex[0] = "-1";
             argumentsTabIndex[1] = "-1";
         }
@@ -447,14 +447,14 @@ forbody:
         identifierStack.at(assignTarget.name).initialized = 1;
 
         if(a.type != "ARR" && b.type != "ARR")
-            sub(b, a, 1);
+            sub(b, a, 1, 1);
         else {
             Identifier aI, bI;
             if(identifierStack.count(argumentsTabIndex[0]) > 0)
                 aI = identifierStack.at(argumentsTabIndex[0]);
             if(identifierStack.count(argumentsTabIndex[1]) > 0)
                 bI = identifierStack.at(argumentsTabIndex[1]);
-            subTab(b, a, bI, aI, 1);
+            subTab(b, a, bI, aI, 1, 1);
             argumentsTabIndex[0] = "-1";
             argumentsTabIndex[1] = "-1";
         }
@@ -553,14 +553,14 @@ expression:
         Identifier a = identifierStack.at(expressionArguments[0]);
         Identifier b = identifierStack.at(expressionArguments[1]);
         if(a.type != "ARR" && b.type != "ARR")
-            sub(a, b, 0);
+            sub(a, b, 0, 1);
         else {
             Identifier aI, bI;
             if(identifierStack.count(argumentsTabIndex[0]) > 0)
                 aI = identifierStack.at(argumentsTabIndex[0]);
             if(identifierStack.count(argumentsTabIndex[1]) > 0)
                 bI = identifierStack.at(argumentsTabIndex[1]);
-            subTab(a, b, aI, bI, 0);
+            subTab(a, b, aI, bI, 0, 1);
             argumentsTabIndex[0] = "-1";
             argumentsTabIndex[1] = "-1";
         }
@@ -588,9 +588,9 @@ expression:
             registerToMem(7);
 
             if(a.type != "ARR" && b.type != "ARR")
-                sub(b, a, 0);
+                sub(b, a, 0, 0);
             else
-                subTab(b, a, bI, aI, 0);
+                subTab(b, a, bI, aI, 0, 0);
 
             long long int stackJ = codeStack.size();
             pushCommand("JZERO");
@@ -814,9 +814,9 @@ condition:
                 bI = identifierStack.at(argumentsTabIndex[1]);
 
             if(a.type != "ARR" && b.type != "ARR")
-                sub(b, a, 0);
+                sub(b, a, 0, 0);
             else
-                subTab(b, a, bI, aI, 0);
+                subTab(b, a, bI, aI, 0, 0);
 
             pushCommandOneArg("JZERO", codeStack.size()+2);
             Jump j;
@@ -825,9 +825,9 @@ condition:
             pushCommand("JUMP");
 
             if(a.type != "ARR" && b.type != "ARR")
-                sub(a, b, 0);
+                sub(a, b, 0, 1);
             else
-                subTab(a, b, aI, bI, 0);
+                subTab(a, b, aI, bI, 0, 1);
 
             pushCommandOneArg("JZERO", codeStack.size()+2);
             Jump jj;
@@ -865,9 +865,9 @@ condition:
                 bI = identifierStack.at(argumentsTabIndex[1]);
 
             if(a.type != "ARR" && b.type != "ARR")
-                sub(b, a, 0);
+                sub(b, a, 0, 0);
             else
-                subTab(b, a, bI, aI, 0);
+                subTab(b, a, bI, aI, 0, 0);
 
             pushCommandOneArg("JZERO", codeStack.size()+2);
             Jump j;
@@ -876,9 +876,9 @@ condition:
             pushCommand("JUMP");
 
             if(a.type != "ARR" && b.type != "ARR")
-                sub(a, b, 0);
+                sub(a, b, 0, 1);
             else
-                subTab(a, b, aI, bI, 0);
+                subTab(a, b, aI, bI, 0, 1);
 
             addInt(jumpStack.at(jumpStack.size()-1).placeInStack, codeStack.size()+1);
             jumpStack.pop_back();
@@ -908,14 +908,14 @@ condition:
         }
         else {
             if(a.type != "ARR" && b.type != "ARR")
-                sub(b, a, 0);
+                sub(b, a, 0, 1);
             else {
                 Identifier aI, bI;
                 if(identifierStack.count(argumentsTabIndex[0]) > 0)
                     aI = identifierStack.at(argumentsTabIndex[0]);
                 if(identifierStack.count(argumentsTabIndex[1]) > 0)
                     bI = identifierStack.at(argumentsTabIndex[1]);
-                subTab(b, a, bI, aI, 0);
+                subTab(b, a, bI, aI, 0, 1);
                 argumentsTabIndex[0] = "-1";
                 argumentsTabIndex[1] = "-1";
             }
@@ -943,14 +943,14 @@ condition:
         }
         else {
             if(a.type != "ARR" && b.type != "ARR")
-                sub(a, b, 0);
+                sub(a, b, 0, 1);
             else {
                 Identifier aI, bI;
                 if(identifierStack.count(argumentsTabIndex[0]) > 0)
                     aI = identifierStack.at(argumentsTabIndex[0]);
                 if(identifierStack.count(argumentsTabIndex[1]) > 0)
                     bI = identifierStack.at(argumentsTabIndex[1]);
-                subTab(a, b, aI, bI, 0);
+                subTab(a, b, aI, bI, 0, 1);
                 argumentsTabIndex[0] = "-1";
                 argumentsTabIndex[1] = "-1";
             }
@@ -978,14 +978,14 @@ condition:
         }
         else {
             if(a.type != "ARR" && b.type != "ARR")
-                sub(b, a, 1);
+                sub(b, a, 1, 1);
             else {
                 Identifier aI, bI;
                 if(identifierStack.count(argumentsTabIndex[0]) > 0)
                     aI = identifierStack.at(argumentsTabIndex[0]);
                 if(identifierStack.count(argumentsTabIndex[1]) > 0)
                     bI = identifierStack.at(argumentsTabIndex[1]);
-                subTab(b, a, bI, aI, 1);
+                subTab(b, a, bI, aI, 1, 1);
                 argumentsTabIndex[0] = "-1";
                 argumentsTabIndex[1] = "-1";
             }
@@ -1013,14 +1013,14 @@ condition:
         }
         else {
             if(a.type != "ARR" && b.type != "ARR")
-                sub(a, b, 1);
+                sub(a, b, 1, 1);
             else {
                 Identifier aI, bI;
                 if(identifierStack.count(argumentsTabIndex[0]) > 0)
                     aI = identifierStack.at(argumentsTabIndex[0]);
                 if(identifierStack.count(argumentsTabIndex[1]) > 0)
                     bI = identifierStack.at(argumentsTabIndex[1]);
-                subTab(a, b, aI, bI, 1);
+                subTab(a, b, aI, bI, 1, 1);
                 argumentsTabIndex[0] = "-1";
                 argumentsTabIndex[1] = "-1";
             }
@@ -1335,6 +1335,8 @@ void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex) {
             long long int addrB = b.mem + stoll(bIndex.name) + 1;
             memToRegister(addrA);
             pushCommandOneArg("ADD", addrB);
+            removeIdentifier(aIndex.name);
+            removeIdentifier(bIndex.name);
         }
         else if(aIndex.type == "NUM" && bIndex.type == "IDE") {
             long long int addrA = a.mem + stoll(aIndex.name) + 1;
@@ -1343,6 +1345,7 @@ void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex) {
             registerToMem(1);
             memToRegister(addrA);
             pushCommandOneArg("ADDI", 1);
+            removeIdentifier(aIndex.name);
         }
         else if(aIndex.type == "IDE" && bIndex.type == "NUM") {
             long long int addrB = b.mem + stoll(bIndex.name) + 1;
@@ -1351,6 +1354,7 @@ void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex) {
             registerToMem(1);
             memToRegister(addrB);
             pushCommandOneArg("ADDI", 1);
+            removeIdentifier(bIndex.name);
         }
         else if(aIndex.type == "IDE" && bIndex.type == "IDE") {
             memToRegister(a.mem);
@@ -1365,17 +1369,20 @@ void addTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex) {
     }
 }
 
-void sub(Identifier a, Identifier b, int isINC) {
+void sub(Identifier a, Identifier b, int isINC, int isRemoval) {
     if(a.type == "NUM" && b.type == "NUM") {
         long long int val = max(stoll(a.name) + isINC - stoll(b.name), (long long int) 0);
         setRegister(to_string(val));
-        removeIdentifier(a.name);
-        removeIdentifier(b.name);
+        if(isRemoval) {
+            removeIdentifier(a.name);
+            removeIdentifier(b.name);
+        }
     }
     else if(a.type == "NUM" && b.type == "IDE") {
         setRegister(to_string(stoll(a.name) + isINC));
         pushCommandOneArg("SUB", b.mem);
-        removeIdentifier(a.name);
+        if(isRemoval)
+            removeIdentifier(a.name);
     }
     else if(a.type == "IDE" && b.type == "NUM") {
         setRegister(b.name);
@@ -1384,7 +1391,8 @@ void sub(Identifier a, Identifier b, int isINC) {
         if(isINC)
             pushCommand("INC");
         pushCommandOneArg("SUB", 3);
-        removeIdentifier(b.name);
+        if(isRemoval)
+            removeIdentifier(b.name);
     }
     else if(a.type == "IDE" && b.type == "IDE") {
         memToRegister(a.mem);
@@ -1394,14 +1402,16 @@ void sub(Identifier a, Identifier b, int isINC) {
     }
 }
 
-void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, int isINC) {
+void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, int isINC, int isRemoval) {
     if(a.type == "NUM" && b.type == "ARR") {
         if(bIndex.type == "NUM") {
             long long int addr = b.mem + stoll(bIndex.name) + 1;
             setRegister(to_string(stoll(a.name) + isINC));
             pushCommandOneArg("SUB", addr);
-            removeIdentifier(a.name);
-            removeIdentifier(bIndex.name);
+            if(isRemoval) {
+                removeIdentifier(a.name);
+                removeIdentifier(bIndex.name);
+            }
         }
         else if(bIndex.type == "IDE") {
             memToRegister(b.mem);
@@ -1409,7 +1419,8 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             registerToMem(1);
             setRegister(to_string(stoll(a.name) + isINC));
             pushCommandOneArg("SUBI", 1);
-            removeIdentifier(a.name);
+            if(isRemoval)
+                removeIdentifier(a.name);
         }
     }
     else if(a.type == "ARR" && b.type == "NUM") {
@@ -1421,8 +1432,10 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             if(isINC)
                 pushCommand("INC");
             pushCommandOneArg("SUB", 3);
-            removeIdentifier(b.name);
-            removeIdentifier(aIndex.name);
+            if(isRemoval) {
+                removeIdentifier(b.name);
+                removeIdentifier(aIndex.name);
+            }
         }
         else if(aIndex.type == "IDE") {
             setRegister(b.name);
@@ -1434,7 +1447,8 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             if(isINC)
                 pushCommand("INC");
             pushCommandOneArg("SUB", 3);
-            removeIdentifier(b.name);
+            if(isRemoval)
+                removeIdentifier(b.name);
         }
     }
     else if(a.type == "IDE" && b.type == "ARR") {
@@ -1444,7 +1458,8 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             if(isINC)
                 pushCommand("INC");
             pushCommandOneArg("SUB", addr);
-            removeIdentifier(bIndex.name);
+            if(isRemoval)
+                removeIdentifier(bIndex.name);
         }
         else if(bIndex.type == "IDE") {
             memToRegister(b.mem);
@@ -1463,7 +1478,8 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             if(isINC)
                 pushCommand("INC");
             pushCommandOneArg("SUB", b.mem);
-            removeIdentifier(aIndex.name);
+            if(isRemoval)
+                removeIdentifier(aIndex.name);
         }
         else if(aIndex.type == "IDE") {
             memToRegister(a.mem);
@@ -1483,6 +1499,10 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             if(isINC)
                 pushCommand("INC");
             pushCommandOneArg("SUB", addrB);
+            if(isRemoval) {
+                removeIdentifier(aIndex.name);
+                removeIdentifier(bIndex.name);
+            }
         }
         else if(aIndex.type == "NUM" && bIndex.type == "IDE") {
             long long int addrA = a.mem + stoll(aIndex.name) + 1;
@@ -1493,6 +1513,8 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             if(isINC)
                 pushCommand("INC");
             pushCommandOneArg("SUBI", 1);
+            if(isRemoval)
+                removeIdentifier(aIndex.name);
         }
         else if(aIndex.type == "IDE" && bIndex.type == "NUM") {
             long long int addrB = b.mem + stoll(bIndex.name) + 1;
@@ -1503,6 +1525,8 @@ void subTab(Identifier a, Identifier b, Identifier aIndex, Identifier bIndex, in
             if(isINC)
                 pushCommand("INC");
             pushCommandOneArg("SUB", addrB);
+            if(isRemoval)
+                removeIdentifier(bIndex.name);
         }
         else if(aIndex.type == "IDE" && bIndex.type == "IDE") {
             memToRegister(a.mem);
@@ -1574,6 +1598,7 @@ void insertIdentifier(string key, Identifier i) {
     else {
         identifierStack.at(key).counter = identifierStack.at(key).counter+1;
     }
+    /*cout << "Add: " << key << " " << memCounter-1 << endl;*/
 }
 
 void removeIdentifier(string key) {
@@ -1586,6 +1611,7 @@ void removeIdentifier(string key) {
             memCounter--;
         }
     }
+    /*cout << "Remove: " << key << endl;*/
 }
 
 void pushCommand(string str) {
