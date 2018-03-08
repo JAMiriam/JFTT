@@ -1,0 +1,103 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[OT4]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{anttor}
+\usepackage[polish]{babel}
+\usepackage{listings}
+\usepackage{color}
+%\usepackage{amssymb}
+\usepackage{multicol}
+
+\lstdefinelanguage{mgc}
+   {keywords={VAR,BEGIN,END,WRITE,READ,IF,THEN,ELSE,ENDIF,WHILE,DO,ENDWHILE,FOR,ENDFOR,DOWNTO,FROM,TO},
+   literate={;}{{{\color{blue};}}}1 {[}{{{\color{blue}[}}}1 {]}{{{\color{blue}]}}}1 {:}{{{\color{blue}:}}}1 {=}{{{\color{blue}=}}}1 {>}{{{\color{blue}>}}}1 {<}{{{\color{blue}<}}}1 {+}{{{\color{blue}+}}}1 {-}{{{\color{blue}-}}}1 {*}{{{\color{blue}*}}}1 {/}{{{\color{blue}/}}}1 {\%}{{{\color{blue}\%}}}1,
+    comment=[s]{(}{)},
+    sensitive=false,
+}
+
+\lstdefinelanguage{mgcgrammar}
+   {keywords={num,pidentifier},
+   literate={->}{{{\color{blue}->}}}1 {|}{{{\color{blue}|}}}1,
+    sensitive=false
+}
+
+
+\lstset{
+  language=mgc,
+  basicstyle=\small\tt,
+  numbers=left,
+  backgroundcolor=\color{white},
+  numberstyle=\small\tt\color{green},
+  commentstyle=\color{red},
+  keywordstyle=\color{blue},
+}
+
+\addtolength{\oddsidemargin}{-20mm}
+\addtolength{\evensidemargin}{-20mm}
+\addtolength{\topmargin}{-30mm}
+\addtolength{\textwidth}{40mm}
+\addtolength{\textheight}{55mm}
+
+\pagestyle{empty}
+
+\begin{document}
+\begin{center}
+{\Large\bf Języki formalne i techniki translacji}\\
+{\large\bf Laboratorium - Projekt - Testy}
+\end{center}
+
+
+\paragraph{\tt program0.imp} \
+
+\lstinputlisting{program0.imp}
+
+\paragraph{\tt program1.imp} \
+
+\lstinputlisting{program1.imp}
+
+\paragraph{\tt program2.imp} \
+
+\lstinputlisting{program2.imp}
+
+\paragraph{\tt 0-div-mod.imp} \
+
+\lstinputlisting{0-div-mod.imp}
+
+\paragraph{\tt 1-numbers.imp} \
+
+\lstinputlisting{1-numbers.imp}
+
+\paragraph{\tt 2-fib.imp} \
+
+\lstinputlisting{2-fib.imp}
+
+\paragraph{\tt 3-fib-factorial.imp} \
+
+\lstinputlisting{3-fib-factorial.imp}
+
+\paragraph{\tt 4-factorial.imp} \
+
+\lstinputlisting{4-factorial.imp}
+
+\paragraph{\tt 5-tab.imp} \
+
+\lstinputlisting{5-tab.imp}
+
+\paragraph{\tt 6-mod-mult.imp} \
+
+\lstinputlisting{6-mod-mult.imp}
+
+\paragraph{\tt 7-loopiii.imp} \
+
+\lstinputlisting{7-loopiii.imp}
+
+\paragraph{\tt 8-for.imp} \
+
+\lstinputlisting{8-for.imp}
+
+\paragraph{\tt 9-sort.imp} \
+
+\lstinputlisting{9-sort.imp}
+
+\end{document}
+

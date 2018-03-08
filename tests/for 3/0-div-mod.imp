@@ -1,0 +1,18 @@
+( div-mod.imp 
+  1 0
+  1 0 0 0
+)
+VAR
+	a b c
+BEGIN
+	READ a;
+	READ b;
+	c := a / a;
+	WRITE c;
+	c := a / b;
+	WRITE c;
+	c := a % a;
+	WRITE c;
+	c := a % b;
+	WRITE c;
+END
